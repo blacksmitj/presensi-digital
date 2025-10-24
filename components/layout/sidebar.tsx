@@ -13,6 +13,8 @@ import {
   BarChart3,
   LogOut,
 } from "lucide-react";
+import { LogoutButton } from "../auth/logout-button";
+import { Button } from "../ui/button";
 
 type NavItem = {
   label: string;
@@ -90,13 +92,12 @@ export function Sidebar({
         </div>
 
         <div className="mt-6">
-          <button
-            className="w-full text-left text-sm text-muted-foreground hover:text-destructive flex items-center gap-3 rounded-xl px-3 py-2 hover:bg-destructive/10 transition"
-            onClick={() => alert("Belum terhubung ke auth")}
-          >
-            <LogOut className="h-4 w-4" />
-            Keluar
-          </button>
+          <LogoutButton>
+            <div className="w-full text-left text-sm text-muted-foreground hover:text-destructive flex items-center gap-3 rounded-xl px-3 py-2 hover:bg-destructive/10 transition">
+              <LogOut className="h-4 w-4" />
+              Keluar
+            </div>
+          </LogoutButton>
         </div>
       </ScrollArea>
     </aside>

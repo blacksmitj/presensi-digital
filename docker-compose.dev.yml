@@ -1,0 +1,44 @@
+services:
+  db:
+    image: postgres:16
+    container_name: presensi_db
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: presensi
+    ports:
+      - "5432:5432"
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d presensi || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7
+    container_name: presensi_redis
+    ports:
+      - "6379:6379"
+
+  mailhog:
+    image: mailhog/mailhog
+    container_name: presensi_mailhog
+    ports:
+      - "8025:8025" # buka di browser → http://localhost:8025
+      - "1025:1025" # SMTP port untuk testing
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: presensi_pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+    ports:
+      - "5050:80" # buka di browser → http://localhost:5050
+    depends_on:
+      - db
+
+volumes:
+  dbdata:

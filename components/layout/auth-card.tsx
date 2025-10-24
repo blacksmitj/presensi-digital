@@ -8,7 +8,8 @@ export function AuthCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-900 dark:to-slate-800">
+    // <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-900 dark:to-slate-800">
+    <div className="min-h-screen flex items-center justify-center">
       <Card className="w-[380px] shadow-lg">
         <CardHeader>
           <CardTitle className="text-center text-lg font-semibold">
@@ -18,5 +19,6 @@ export function AuthCard({
         <CardContent>{children}</CardContent>
       </Card>
     </div>
+    // </div>
   );
 }
