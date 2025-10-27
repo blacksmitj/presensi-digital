@@ -44,6 +44,10 @@ model User {
   assignments       ActivityAssignment[] // staff assigned to activities
   assignedAsManager ActivityAssignment[] @relation("AssignedBy")
 
+  logs AuditLog[]
+
+  // relations
+
   accounts Account[]
 
   createdAt DateTime @default(now())
@@ -65,6 +69,9 @@ model Workspace {
 
   // ⬇️ relasi ke Activity
   activities Activity[]
+
+  // Log
+  logs AuditLog[]
 
   // relations
   memberships Membership[]
@@ -254,4 +261,66 @@ model Account {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([provider, providerAccountId])
+}
+
+// ===== Enums =====
+enum AuditAction {
+  // workspace / membership
+  CREATE_WORKSPACE
+  UPDATE_WORKSPACE
+  DELETE_WORKSPACE
+  JOIN_WORKSPACE
+  LEAVE_WORKSPACE
+  ADD_MEMBER
+  REMOVE_MEMBER
+  UPDATE_MEMBER_ROLE
+
+  // activity/checkpoint/attendance (opsional)
+  CREATE_ACTIVITY
+  UPDATE_ACTIVITY
+  DELETE_ACTIVITY
+  CREATE_CHECKPOINT
+  UPDATE_CHECKPOINT
+  DELETE_CHECKPOINT
+  SCAN_IN
+  SCAN_OUT
+
+  // generic
+  LOGIN
+  LOGOUT
+  INVITE_SENT
+  INVITE_ACCEPTED
+}
+
+// ===== Model =====
+model AuditLog {
+  id          String      @id @default(cuid())
+  workspaceId String
+  userId      String? // nullable: untuk system jobs / webhooks tanpa user
+  action      AuditAction
+  message     String // ringkas & human-readable
+  ipAddress   String? // simpan IP jika ada
+  userAgent   String? // UA client
+  route       String? // mis. "/api/workspaces/[id]/join"
+  method      String? // "GET" | "POST" | "PUT" | "DELETE" | ...
+  statusCode  Int? // HTTP status pada aksi utama (jika relevan)
+
+  // Target tambahan yang diubah/terkait (polymorphic ala app-level)
+  targetType String? // mis. "Workspace" | "Membership" | "Activity"
+  targetId   String? // id entitas terkait (String biar fleksibel)
+
+  // Detail tambahan (bebas struktur)
+  metadata Json? // mis. { "fromRole": "STAFF", "toRole": "ADMIN" }
+  diff     Json? // mis. { "name": { "old": "A", "new": "B" } }
+
+  createdAt DateTime @default(now())
+
+  // Relations
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  // Indeks agar query cepat
+  @@index([workspaceId, createdAt(sort: Desc)])
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([action, createdAt(sort: Desc)])
 }

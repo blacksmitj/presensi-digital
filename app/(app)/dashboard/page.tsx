@@ -1,5 +1,3 @@
-import { getUserById } from "@/actions/user";
-import { auth } from "@/auth";
 import { currentUser } from "@/lib/auth";
 
 const DashboardPage = async () => {
