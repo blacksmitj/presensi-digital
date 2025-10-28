@@ -44,16 +44,16 @@ export const GET = withApi(async (_req, ctx) => {
 export const PATCH = withApi(async (req, ctx) => {
   const session = await requireSession();
   const userId = session.user?.id as string;
-  const { id } = (await ctx?.params) ?? {};
+  const { workspaceId } = (await ctx?.params) ?? {};
 
-  if (!id) {
+  if (!workspaceId) {
     return NextResponse.json(
       { error: "Missing workspace id" },
       { status: 400 }
     );
   }
 
-  await ensureWorkspaceAccess(userId, id, [Role.OWNER, Role.ADMIN]);
+  await ensureWorkspaceAccess(userId, workspaceId, [Role.OWNER, Role.ADMIN]);
 
   const body = await req.json().catch(() => {});
   const parsed = WorkspaceUpdateSchema.safeParse(body);
@@ -71,7 +71,7 @@ export const PATCH = withApi(async (req, ctx) => {
   }
   const update = await prisma?.workspace.update({
     where: {
-      id,
+      id: workspaceId,
     },
     data: {
       name: name ?? undefined,

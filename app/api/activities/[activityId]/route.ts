@@ -6,7 +6,7 @@ import { ActivityUpdateSchema } from "@/schema/activity";
 import { withApi } from "@/lib/withapi";
 import { requireStartBeforeEnd } from "@/lib/guard/time";
 import { ensureWorkspaceAccess } from "@/lib/guard/membership";
-import { getWorkspaceIdbyActivityId } from "@/lib/guard/activity";
+import { getWorkspaceIdByActivityId } from "@/lib/guard/activity";
 
 export const GET = withApi(async (_req, ctx) => {
   const session = await requireSession();
@@ -20,7 +20,7 @@ export const GET = withApi(async (_req, ctx) => {
     });
   }
 
-  const workspaceId = await getWorkspaceIdbyActivityId(activityId);
+  const workspaceId = await getWorkspaceIdByActivityId(activityId);
 
   await ensureWorkspaceAccess(userId, workspaceId);
 
@@ -46,7 +46,7 @@ export const PATCH = withApi(async (req, ctx) => {
     });
   }
 
-  const workspaceId = await getWorkspaceIdbyActivityId(activityId);
+  const workspaceId = await getWorkspaceIdByActivityId(activityId);
 
   await ensureWorkspaceAccess(userId, workspaceId, [Role.OWNER, Role.ADMIN]);
 
@@ -75,7 +75,7 @@ export const DELETE = withApi(async (req, ctx) => {
     return NextResponse.json({ error: "Missing activity id" }, { status: 400 });
   }
 
-  const workspaceId = await getWorkspaceIdbyActivityId(activityId);
+  const workspaceId = await getWorkspaceIdByActivityId(activityId);
 
   await ensureWorkspaceAccess(userId, workspaceId, [Role.OWNER, Role.ADMIN]);
 

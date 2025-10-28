@@ -147,6 +147,7 @@ model Participant {
   email      String?
   phone      String?
   qrRef      String  @unique // unique QR reference (e.g., "ps_00123")
+  metadata   Json?
 
   workspaceId String
   workspace   Workspace @relation(fields: [workspaceId], references: [id])
@@ -193,7 +194,6 @@ enum AttendanceStatus {
   REJECTED
 }
 
-// ===== MODEL BARU: ATTENDANCE =====
 model Attendance {
   id            String           @id @default(cuid())
   participantId String
