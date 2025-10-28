@@ -1,21 +1,23 @@
-import { requireSession } from "@/lib/auth";
-import { ensureWorkspaceAccess } from "@/lib/authz";
+import { requireSession } from "@/lib/guard/auth";
+import { ensureWorkspaceAccess } from "@/lib/guard/membership";
+import { withApi } from "@/lib/withapi";
 import { WorkspaceStatusSchema } from "@/schema/workspace";
 import { Role, WorkspaceStatus } from "@prisma/client";
 import { NextResponse } from "next/server";
 
-export async function POST(
-  req: Request,
-  { params }: { params: { id: string } }
-) {
+export const POST = withApi(async (req, ctx) => {
   const session = await requireSession();
   const userId = session.user?.id as string;
-  const { id } = params;
+  const { workspaceId } = (await ctx?.params) ?? {};
 
-  const role = await ensureWorkspaceAccess(userId, id, [
-    Role.OWNER,
-    Role.ADMIN,
-  ]);
+  if (!workspaceId) {
+    return NextResponse.json(
+      { error: "Missing workspace id" },
+      { status: 400 }
+    );
+  }
+
+  await ensureWorkspaceAccess(userId, workspaceId, [Role.OWNER, Role.ADMIN]);
 
   const body = await req.json().catch(() => {});
   const parsed = WorkspaceStatusSchema.safeParse(body);
@@ -25,7 +27,7 @@ export async function POST(
 
   const update = await prisma?.workspace.update({
     where: {
-      id,
+      id: workspaceId,
     },
     data: {
       status: parsed.data.status as WorkspaceStatus,
@@ -39,4 +41,4 @@ export async function POST(
   });
 
   return NextResponse.json(update);
-}
+});

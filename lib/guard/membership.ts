@@ -1,5 +1,5 @@
 import { Role } from "@prisma/client";
-import { db } from "./prisma";
+import { db } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
 export async function ensureWorkspaceAccess(

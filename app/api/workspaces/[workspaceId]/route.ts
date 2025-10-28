@@ -1,22 +1,27 @@
-import { requireSession } from "@/lib/auth";
-import { ensureWorkspaceAccess } from "@/lib/authz";
+import { requireSession } from "@/lib/guard/auth";
+import { ensureWorkspaceAccess } from "@/lib/guard/membership";
+import { withApi } from "@/lib/withapi";
 import { WorkspaceUpdateSchema } from "@/schema/workspace";
 import { Role } from "@prisma/client";
 import { NextResponse } from "next/server";
 
-export async function GET(
-  _req: Request,
-  { params }: { params: { id: string } }
-) {
+export const GET = withApi(async (_req, ctx) => {
   const session = await requireSession();
   const userId = session?.user?.id as string;
-  const { id } = params;
+  const { workspaceId } = (await ctx?.params) ?? {};
 
-  await ensureWorkspaceAccess(userId, id);
+  if (!workspaceId) {
+    return NextResponse.json(
+      { error: "Missing workspace id" },
+      { status: 400 }
+    );
+  }
+
+  await ensureWorkspaceAccess(userId, workspaceId);
 
   const workspace = await prisma?.workspace.findUnique({
     where: {
-      id,
+      id: workspaceId,
     },
     include: {
       _count: {
@@ -34,25 +39,21 @@ export async function GET(
   }
 
   return NextResponse.json(workspace);
-}
+});
 
-export async function PATCH(
-  req: Request,
-  { params }: { params: { id: string } }
-) {
+export const PATCH = withApi(async (req, ctx) => {
   const session = await requireSession();
   const userId = session.user?.id as string;
-  const { id } = params;
+  const { id } = (await ctx?.params) ?? {};
 
-  const role = await ensureWorkspaceAccess(userId, id);
-  const allowedRoles: Role[] = [Role.OWNER, Role.ADMIN];
-
-  if (!allowedRoles.includes(role)) {
+  if (!id) {
     return NextResponse.json(
-      { error: "Only owner or admin can update workspace" },
-      { status: 403 }
+      { error: "Missing workspace id" },
+      { status: 400 }
     );
   }
+
+  await ensureWorkspaceAccess(userId, id, [Role.OWNER, Role.ADMIN]);
 
   const body = await req.json().catch(() => {});
   const parsed = WorkspaceUpdateSchema.safeParse(body);
@@ -81,4 +82,4 @@ export async function PATCH(
   });
 
   return NextResponse.json(update);
-}
+});

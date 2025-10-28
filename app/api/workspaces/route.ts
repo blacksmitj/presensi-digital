@@ -1,13 +1,16 @@
 import { db } from "@/lib/prisma";
-import { requireSession } from "@/lib/auth";
+import { requireSession } from "@/lib/guard/auth";
 import { generateJoinCode } from "@/lib/joincode";
 import { WorkspaceCreateSchema } from "@/schema/workspace";
 import { Role, WorkspaceStatus } from "@prisma/client";
 import { NextResponse } from "next/server";
+import { requireStartBeforeEnd } from "@/lib/guard/time";
+import { withApi } from "@/lib/withapi";
 
-export async function GET() {
+export const GET = withApi(async (_req) => {
   const session = await requireSession();
   const userId = session.user?.id as string;
+
   const membership = await db.membership.findMany({
     where: {
       userId,
@@ -25,9 +28,9 @@ export async function GET() {
   return NextResponse.json({
     items: membership?.map((m) => ({ ...m.workspace, myRole: m.role })),
   });
-}
+});
 
-export async function POST(req: Request) {
+export const POST = withApi(async (req) => {
   const session = await requireSession();
   const userId = session.user?.id as string;
 
@@ -39,38 +42,24 @@ export async function POST(req: Request) {
 
   const { name, startDate, endDate, defaultRole } = parsed.data;
 
-  if (startDate && endDate && new Date(startDate) >= new Date(endDate)) {
-    return NextResponse.json(
-      { error: "Start date must be before end date" },
-      { status: 400 }
-    );
-  }
+  requireStartBeforeEnd(startDate, endDate);
 
   const joinCode = generateJoinCode(name);
 
-  const workspace = await db.$transaction(async (tx) => {
-    const created = await tx.workspace.create({
-      data: {
-        name,
-        status: WorkspaceStatus.ACTIVE,
-        joinCode,
-        defaultRole: defaultRole ?? Role.STAFF,
-        startDate: startDate ? new Date(startDate) : null,
-        endDate: endDate ? new Date(endDate) : null,
-        createdById: userId,
+  const workspace = await db.workspace.create({
+    data: {
+      name,
+      status: WorkspaceStatus.ACTIVE,
+      joinCode,
+      defaultRole: defaultRole ?? Role.STAFF,
+      startDate: startDate ? new Date(startDate) : null,
+      endDate: endDate ? new Date(endDate) : null,
+      createdById: userId,
+      memberships: {
+        create: { userId, role: Role.OWNER },
       },
-    });
-
-    await tx.membership.create({
-      data: {
-        workspaceId: created.id,
-        userId,
-        role: Role.OWNER,
-      },
-    });
-
-    return created;
+    },
   });
 
   return NextResponse.json(workspace, { status: 201 });
-}
+});

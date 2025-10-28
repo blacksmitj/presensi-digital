@@ -2,15 +2,15 @@ import { z } from "zod";
 
 export const WorkspaceCreateSchema = z.object({
   name: z.string().min(3).max(120),
-  startDate: z.string().datetime().optional(),
-  endDate: z.string().datetime().optional(),
+  startDate: z.coerce.date().optional(),
+  endDate: z.coerce.date().optional(),
   defaultRole: z.enum(["OWNER", "ADMIN", "SUPERVISOR", "STAFF"]).optional(),
 });
 
 export const WorkspaceUpdateSchema = z.object({
   name: z.string().min(3).max(120).optional(),
-  startDate: z.string().datetime().optional(),
-  endDate: z.string().datetime().optional(),
+  startDate: z.coerce.date().optional(),
+  endDate: z.coerce.date().optional(),
   defaultRole: z.enum(["OWNER", "ADMIN", "SUPERVISOR", "STAFF"]).optional(),
 });
 

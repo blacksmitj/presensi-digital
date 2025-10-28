@@ -1,5 +1,4 @@
 import { auth } from "@/auth";
-import { NextResponse } from "next/server";
 
 export const currentUser = async () => {
   const session = await auth();

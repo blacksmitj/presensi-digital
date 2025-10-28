@@ -1,4 +1,4 @@
-import { currentUser } from "@/lib/auth";
+import { currentUser } from "@/lib/guard/auth";
 
 const DashboardPage = async () => {
   const user = await currentUser();

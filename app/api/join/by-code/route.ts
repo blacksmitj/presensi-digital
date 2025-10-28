@@ -1,5 +1,5 @@
 import { logAudit } from "@/lib/audit";
-import { requireSession } from "@/lib/auth";
+import { requireSession } from "@/lib/guard/auth";
 import { db } from "@/lib/prisma";
 import { JoinCodeSchema } from "@/schema/workspace";
 import { AuditAction, Role, WorkspaceStatus } from "@prisma/client";
