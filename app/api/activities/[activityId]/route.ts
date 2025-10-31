@@ -66,7 +66,7 @@ export const PATCH = withApi(async (req, ctx) => {
   return NextResponse.json(updated);
 });
 
-export const DELETE = withApi(async (req, ctx) => {
+export const DELETE = withApi(async (_req, ctx) => {
   const session = await requireSession();
   const userId = session.user?.id as string;
   const { activityId } = (await ctx?.params) ?? {};

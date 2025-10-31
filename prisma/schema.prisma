@@ -324,3 +324,27 @@ model AuditLog {
   @@index([userId, createdAt(sort: Desc)])
   @@index([action, createdAt(sort: Desc)])
 }
+
+model EmailQueue {
+  id          String      @id @default(cuid())
+  toEmail     String
+  subject     String
+  payloadJson Json // simpan data untuk generate isi email
+  status      EmailStatus @default(PENDING)
+  error       String?
+  attempts    Int         @default(0)
+  scheduledAt DateTime    @default(now()) // bisa untuk delay
+  sentAt      DateTime?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  // optional: workspaceId supaya kamu tahu ini email milik workspace mana
+  workspaceId String?
+}
+
+enum EmailStatus {
+  PENDING // belum dikirim
+  SENDING // sedang diproses worker
+  SENT // sukses
+  FAILED // sudah dicoba tapi gagal
+}

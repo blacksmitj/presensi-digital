@@ -18,7 +18,10 @@ export async function ensureWorkspaceAccess(
   });
 
   if (!membership) {
-    throw NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    throw NextResponse.json(
+      { error: "Forbidden access to this workspace" },
+      { status: 403 }
+    );
   }
 
   if (allowed && !allowed.includes(membership.role)) {

@@ -23,15 +23,22 @@ export const POST = withApi(async (req) => {
 
   const bodyParse = ParticipantImportSchema.safeParse({
     workspaceId: form.get("workspaceId"),
+    workspaceName: form.get("workspaceName"),
     dryRun: form.get("dryRun") ?? undefined,
   });
+
   if (!bodyParse.success) {
     return NextResponse.json(
       { error: bodyParse.error.flatten() },
       { status: 400 }
     );
   }
-  const { workspaceId, dryRun } = bodyParse.data;
+  const { workspaceId, dryRun, workspaceName } = bodyParse.data;
+
+  const subjectBase =
+    workspaceName && workspaceName.trim().length > 0
+      ? `QR Presensi ${workspaceName}`
+      : "QR Presensi";
 
   // hanya OWNER/ADMIN yang boleh import
   await ensureWorkspaceAccess(userId, workspaceId, [Role.OWNER, Role.ADMIN]);
@@ -75,98 +82,89 @@ export const POST = withApi(async (req) => {
     const phone = core.phone?.toString().trim() || undefined;
     const externalId = core.externalId?.toString().trim() || undefined;
 
-    // aturan minimal: butuh "name" untuk create. Untuk update by externalId tanpa name masih boleh.
-    if (!name && !externalId) {
+    // aturan minimal: butuh "name", "externalId" dan "email" untuk create.
+    if (!name || !externalId || !email) {
       skipped++;
       errors.push({
         row: rowNumber,
-        message: "Missing both name and externalId",
+        message: "Missing name, externalId or email",
       });
       return;
     }
 
     // duplikasi externalId dalam file
-    if (externalId) {
-      const key = `${workspaceId}:${externalId.toLowerCase()}`;
-      if (seenExternal.has(key)) {
-        skipped++;
-        errors.push({
-          row: rowNumber,
-          message: `Duplicate externalId in file: ${externalId}`,
-        });
-        return;
-      }
-      seenExternal.add(key);
+    const key = `${workspaceId}:${externalId.toLowerCase()}`;
+    if (seenExternal.has(key)) {
+      skipped++;
+      errors.push({
+        row: rowNumber,
+        message: `Duplicate externalId in file: ${externalId}`,
+      });
+      return;
     }
+    seenExternal.add(key);
 
     // DRY-RUN: hanya hitung plan, jangan ke DB
     if (dryRun) {
-      if (externalId) {
-        // kita tidak tahu apakah existing atau tidak tanpa query;
-        // untuk estimasi, tandai sebagai "upsert"
-        updated++; // treat as upsert plan
-      } else {
-        inserted++;
-      }
+      inserted++;
       return;
     }
 
     // Kerjakan DB per baris
     works.push(async () => {
       try {
-        if (externalId) {
-          // cari existing by [workspaceId, externalId]
-          const existing = await db.participant.findFirst({
-            where: { workspaceId, externalId },
-            select: { id: true },
-          });
+        // cari existing by [workspaceId, externalId]
+        const existing = await db.participant.findFirst({
+          where: { workspaceId, externalId },
+          select: { id: true, qrRef: true },
+        });
 
-          if (existing) {
-            // update fields yang ada nilainya; kosong/"" tidak overwrite
-            const data: any = {};
-            if (name) data.name = name;
-            if (email !== undefined && email !== "") data.email = email;
-            if (phone !== undefined && phone !== "") data.phone = phone;
-            if (metadata) data.metadata = metadata;
+        if (existing) {
+          // update fields yang ada nilainya; kosong/"" tidak overwrite
+          const data: any = {};
+          if (name) data.name = name;
+          if (email) data.email = email;
+          if (phone) data.phone = phone;
+          if (metadata) data.metadata = metadata;
 
-            if (Object.keys(data).length === 0) {
-              skipped++;
-              return;
-            }
-
+          if (Object.keys(data).length > 0) {
             await db.participant.update({
               where: { id: existing.id },
               data,
             });
             updated++;
           } else {
-            await db.participant.create({
-              data: {
-                workspaceId,
-                externalId,
-                name: name || "(Unnamed)",
-                email: email ?? null,
-                phone: phone ?? null,
-                qrRef: generateQrRef(),
-                metadata: metadata ?? undefined,
-              },
-            });
-            inserted++;
+            skipped++;
           }
-        } else {
-          // Tanpa externalId → selalu create baru
-          await db.participant.create({
-            data: {
-              workspaceId,
-              name: name!, // sudah dijaga di atas
-              email: email ?? null,
-              phone: phone ?? null,
-              qrRef: generateQrRef(),
-              metadata: metadata ?? undefined,
-            },
-          });
-          inserted++;
+          return;
         }
+
+        const qrRef = generateQrRef();
+        const created = await db.participant.create({
+          data: {
+            workspaceId,
+            externalId,
+            name,
+            email,
+            phone: phone ?? null,
+            qrRef,
+            metadata: metadata ?? undefined,
+          },
+        });
+        inserted++;
+
+        await db.emailQueue.create({
+          data: {
+            toEmail: created.email!,
+            subject: subjectBase,
+            payloadJson: {
+              participantName: created.name,
+              qrRef,
+              workspaceName: workspaceName ?? "",
+            },
+            workspaceId,
+          },
+        });
       } catch (e: any) {
         skipped++;
         errors.push({ row: rowNumber, message: e?.message ?? "DB error" });
